@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UniFi Voucher Request — Client Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0f1e; --surface: #111827; --card: #1a2235;
+    --border: #2a3a55; --accent: #00d4ff; --accent2: #7c3aed;
+    --text: #e2e8f0; --muted: #64748b;
+    --success: #10b981; --error: #ef4444; --warning: #f59e0b;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background: radial-gradient(ellipse 800px 400px at 20% 10%, rgba(0,212,255,0.07) 0%, transparent 60%),
+                radial-gradient(ellipse 600px 400px at 80% 80%, rgba(124,58,237,0.07) 0%, transparent 60%);
+    pointer-events: none; z-index: 0;
+  }
+  body::after {
+    content: ''; position: fixed; inset: 0;
+    background-image: linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px; pointer-events: none; z-index: 0;
+  }
+  .wrapper { position: relative; z-index: 1; }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 40px; border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(10px); background: rgba(10,15,30,0.8);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { display: flex; align-items: center; gap: 12px; font-family: 'Space Mono', monospace; font-size: 18px; font-weight: 700; }
+  .logo-icon { width: 36px; height: 36px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .logo span { color: var(--accent); }
+  .status-pill { display: flex; align-items: center; gap: 8px; padding: 6px 14px; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); border-radius: 20px; font-size: 12px; color: var(--success); font-family: 'Space Mono', monospace; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.5; transform:scale(1.4); } }
+  main { max-width: 700px; margin: 0 auto; padding: 60px 20px; }
+  .hero { text-align: center; margin-bottom: 48px; animation: fadeUp 0.6s ease; }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+  .hero-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: rgba(0,212,255,0.1); border: 1px solid rgba(0,212,255,0.3); border-radius: 20px; font-size: 11px; font-family: 'Space Mono', monospace; color: var(--accent); letter-spacing: 1px; margin-bottom: 20px; }
+  h1 { font-size: clamp(28px, 5vw, 42px); font-weight: 600; line-height: 1.2; margin-bottom: 12px; }
+  h1 em { font-style: normal; color: var(--accent); }
+  .hero p { color: var(--muted); font-size: 15px; line-height: 1.6; max-width: 460px; margin: 0 auto; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 32px; animation: fadeUp 0.6s ease 0.1s both; }
+  .card-title { font-family: 'Space Mono', monospace; font-size: 12px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-bottom: 24px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-group { margin-bottom: 16px; }
+  .form-group label { display: block; font-size: 13px; font-weight: 500; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 16px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px;
+    outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,212,255,0.1); }
+  .form-group select { cursor: pointer; }
+  .form-group select option { background: var(--surface); }
+  .form-group textarea { resize: vertical; min-height: 80px; }
+
+  /* ── REASON CARDS ── */
+  .reason-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .reason-card { position: relative; cursor: pointer; }
+  .reason-card input[type="radio"] { position: absolute; opacity: 0; width: 0; height: 0; }
+  .reason-label {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px 18px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 12px;
+    transition: all 0.2s; cursor: pointer;
+  }
+  .reason-label:hover { border-color: rgba(0,212,255,0.4); background: rgba(0,212,255,0.03); }
+  .reason-card input[type="radio"]:checked + .reason-label {
+    background: rgba(0,212,255,0.08); border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,212,255,0.08);
+  }
+  .reason-icon { font-size: 26px; line-height: 1; }
+  .reason-text { display: flex; flex-direction: column; gap: 2px; }
+  .reason-title { font-size: 15px; font-weight: 600; color: var(--text); }
+  .reason-desc { font-size: 11px; color: var(--muted); }
+  .reason-card input[type="radio"]:checked + .reason-label .reason-title { color: var(--accent); }
+
+  /* ── REASON DETAIL (slide-in) ── */
+  .reason-detail { margin-top: 12px; overflow: hidden; max-height: 0; opacity: 0; transition: max-height 0.3s ease, opacity 0.3s ease; }
+  .reason-detail.visible { max-height: 80px; opacity: 1; }
+  .reason-detail-label { font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; display: block; }
+  .reason-detail input {
+    width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 16px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px;
+    outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .reason-detail input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,212,255,0.1); }
+
+  /* ── DURATION ── */
+  .duration-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .duration-btn {
+    padding: 10px 8px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--muted); font-size: 13px;
+    font-family: 'Space Mono', monospace; cursor: pointer; text-align: center;
+    transition: all 0.2s; user-select: none;
+  }
+  .duration-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .duration-btn.active { background: rgba(0,212,255,0.1); border-color: var(--accent); color: var(--accent); }
+
+  /* ── CUSTOM DURATION ── */
+  .custom-duration-wrap { margin-top: 10px; overflow: hidden; max-height: 0; opacity: 0; transition: max-height 0.3s ease, opacity 0.3s ease; display: flex; gap: 10px; align-items: center; }
+  .custom-duration-wrap.visible { max-height: 60px; opacity: 1; }
+  .custom-duration-wrap input {
+    flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 14px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px;
+    outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .custom-duration-wrap input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,212,255,0.1); }
+
+  /* ── QUANTITY ── */
+  .qty-row { display: flex; gap: 10px; align-items: center; }
+  .qty-row select { flex: 1; }
+  .custom-qty-wrap { overflow: hidden; max-width: 0; opacity: 0; transition: max-width 0.3s ease, opacity 0.3s ease; }
+  .custom-qty-wrap.visible { max-width: 120px; opacity: 1; }
+  .custom-qty-wrap input {
+    width: 110px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px;
+    outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .custom-qty-wrap input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,212,255,0.1); }
+
+  /* ── HISTORY ── */
+  .history-section { margin-top: 32px; animation: fadeUp 0.6s ease 0.2s both; }
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .section-title { font-family: 'Space Mono', monospace; font-size: 12px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; }
+  .count-badge { padding: 2px 8px; background: rgba(0,212,255,0.1); border: 1px solid rgba(0,212,255,0.2); border-radius: 10px; font-size: 11px; color: var(--accent); font-family: 'Space Mono', monospace; }
+  .request-item { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; transition: border-color 0.2s; }
+  .request-item:hover { border-color: rgba(0,212,255,0.3); }
+  .req-left { display: flex; align-items: center; gap: 14px; }
+  .req-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .req-icon.pending  { background: rgba(245,158,11,0.15); }
+  .req-icon.approved { background: rgba(16,185,129,0.15); }
+  .req-info h4 { font-size: 14px; font-weight: 500; margin-bottom: 3px; }
+  .req-info .req-meta { font-size: 12px; color: var(--muted); font-family: 'Space Mono', monospace; }
+  .req-info .req-subject { font-size: 12px; color: var(--accent); font-family: 'Space Mono', monospace; margin-top: 2px; }
+  .req-right { text-align: right; flex-shrink: 0; }
+  .status-tag { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-family: 'Space Mono', monospace; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .status-tag.pending  { background: rgba(245,158,11,0.1); color: var(--warning); }
+  .status-tag.approved { background: rgba(16,185,129,0.1); color: var(--success); }
+  .req-date { font-size: 11px; color: var(--muted); }
+  .btn-submit {
+    width: 100%; padding: 14px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none; border-radius: 10px; color: white; font-size: 15px; font-weight: 600;
+    font-family: 'DM Sans', sans-serif; cursor: pointer; margin-top: 8px;
+    position: relative; overflow: hidden; transition: opacity 0.2s, transform 0.1s;
+  }
+  .btn-submit:hover { opacity: 0.9; }
+  .btn-submit:active { transform: scale(0.99); }
+  .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+  .toast {
+    position: fixed; top: 80px; right: 20px; z-index: 999;
+    padding: 14px 20px; border-radius: 12px; font-size: 14px;
+    display: flex; align-items: center; gap: 10px;
+    animation: slideIn 0.3s ease; max-width: 360px;
+  }
+  @keyframes slideIn { from { transform:translateX(120px); opacity:0; } to { transform:translateX(0); opacity:1; } }
+  .toast.success { background: rgba(16,185,129,0.2); border: 1px solid rgba(16,185,129,0.4); color: var(--success); }
+  .toast.error   { background: rgba(239,68,68,0.2);  border: 1px solid rgba(239,68,68,0.4);  color: var(--error); }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+  .email-preview { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; font-size: 13px; color: var(--muted); font-family: 'Space Mono', monospace; line-height: 1.8; }
+  .email-preview strong { color: var(--text); }
+  @media (max-width: 560px) {
+    header { padding: 16px 20px; }
+    main { padding: 40px 16px; }
+    .form-row { grid-template-columns: 1fr; }
+    .duration-grid { grid-template-columns: repeat(2, 1fr); }
+    .reason-grid { grid-template-columns: 1fr; }
+    .card { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <header>
+    <div class="logo">
+      <div class="logo-icon">📡</div>
+      <span>Uni<span>Fi</span></span>&nbsp;Portal
+    </div>
+    <div class="status-pill">
+      <div class="status-dot"></div>
+      ONLINE
+    </div>
+  </header>
+  <main>
+    <div class="hero">
+      <div class="hero-badge">⚡ CLIENT ACCESS PORTAL</div>
+      <h1>Request Your<br><em>WiFi Voucher</em></h1>
+      <p>Submit your voucher request below. Our team will review and send your voucher code via email within minutes.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">— New Voucher Request</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>First Name</label>
+          <input type="text" id="firstName" placeholder="Juan" />
+        </div>
+        <div class="form-group">
+          <label>Last Name</label>
+          <input type="text" id="lastName" placeholder="Dela Cruz" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="email" placeholder="juan@example.com" />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Room / Unit / Location</label>
+          <input type="text" id="room" placeholder="e.g. Room 201, Lobby, Cafe" />
+        </div>
+        <div class="form-group">
+          <label>Division / Department</label>
+          <input type="text" id="division" placeholder="e.g. IT, HR, Finance" />
+        </div>
+      </div>
+
+      <!-- ── REASON OF REQUEST ── -->
+      <div class="form-group">
+        <label>Reason of Request</label>
+        <div class="reason-grid">
+          <label class="reason-card">
+            <input type="radio" name="reason" value="Visitor" onchange="onReasonChange('Visitor')" />
+            <div class="reason-label">
+              <div class="reason-icon">👤</div>
+              <div class="reason-text">
+                <span class="reason-title">Visitor</span>
+                <span class="reason-desc">Guest / walk-in access</span>
+              </div>
+            </div>
+          </label>
+          <label class="reason-card">
+            <input type="radio" name="reason" value="Event" onchange="onReasonChange('Event')" />
+            <div class="reason-label">
+              <div class="reason-icon">🎉</div>
+              <div class="reason-text">
+                <span class="reason-title">Event</span>
+                <span class="reason-desc">Meeting / conference / function</span>
+              </div>
+            </div>
+          </label>
+        </div>
+        <!-- Slide-in subject field -->
+        <div class="reason-detail" id="reasonDetail">
+          <span class="reason-detail-label" id="reasonDetailLabel">Visitor Name / Title</span>
+          <input type="text" id="reasonSubject" placeholder="e.g. John Smith — CEO, Acme Corp" />
+        </div>
+      </div>
+
+      <!-- ── VOUCHER DURATION ── -->
+      <div class="form-group">
+        <label>Voucher Duration</label>
+        <div class="duration-grid" id="durationGrid">
+          <button type="button" class="duration-btn active" data-value="1 Day">1 DAY</button>
+          <button type="button" class="duration-btn" data-value="2 Days">2 DAYS</button>
+          <button type="button" class="duration-btn" data-value="3 Days">3 DAYS</button>
+          <button type="button" class="duration-btn" data-value="5 Days">5 DAYS</button>
+          <button type="button" class="duration-btn" data-value="1 Week">1 WEEK</button>
+          <button type="button" class="duration-btn" data-value="10 Days">10 DAYS</button>
+          <button type="button" class="duration-btn" data-value="1 Month">1 MONTH</button>
+          <button type="button" class="duration-btn" data-value="Custom">CUSTOM</button>
+        </div>
+        <div class="custom-duration-wrap" id="customDurationWrap">
+          <input type="text" id="customDurationInput" placeholder="e.g. 2 Weeks, 45 Days, 3 Hours…" oninput="onCustomDurationInput()" />
+        </div>
+      </div>
+
+      <!-- ── NUMBER OF VOUCHERS ── -->
+      <div class="form-group">
+        <label>Number of Vouchers</label>
+        <div class="qty-row">
+          <select id="quantity" onchange="onQtyChange()">
+            <option value="1">1 Voucher</option>
+            <option value="2">2 Vouchers</option>
+            <option value="3">3 Vouchers</option>
+            <option value="5">5 Vouchers</option>
+            <option value="10">10 Vouchers</option>
+            <option value="custom">Custom…</option>
+          </select>
+          <div class="custom-qty-wrap" id="customQtyWrap">
+            <input type="number" id="customQtyInput" min="1" max="999" placeholder="e.g. 25" oninput="updatePreview()" />
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Additional Notes (Optional)</label>
+        <textarea id="notes" placeholder="e.g. Guest names, event details, special instructions..."></textarea>
+      </div>
+
+      <hr class="divider">
+      <div class="email-preview">
+        📡 Submitting to: <strong>UniFi Network Team (via server)</strong><br>
+        Confirmation email: <strong id="previewEmail">your-email@example.com</strong><br>
+        Subject: <strong id="previewSubject">Voucher Request — Your Name [1 Day × 1]</strong>
+      </div>
+      <button type="button" class="btn-submit" id="submitBtn" onclick="submitRequest()">
+        📤 &nbsp; Send Voucher Request
+      </button>
+    </div>
+
+    <div class="history-section">
+      <div class="section-header">
+        <div class="section-title">— My Requests</div>
+        <div class="count-badge" id="historyCount">0 TOTAL</div>
+      </div>
+      <div id="requestHistory"></div>
+    </div>
+  </main>
+</div>
+<div id="toast" class="toast success" style="display:none;"></div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+const SERVER_URL = '';
+const _base = (location.protocol === 'file:' || !SERVER_URL)
+  ? 'http://localhost:8080'
+  : SERVER_URL;
+
+let selectedDuration = '1 Day';
+let requests = [];
+
+// ── REASON CHANGE ─────────────────────────────────────────────────────────────
+function onReasonChange(type) {
+  const detail = document.getElementById('reasonDetail');
+  const input  = document.getElementById('reasonSubject');
+  const label  = document.getElementById('reasonDetailLabel');
+  if (type === 'Visitor') {
+    label.textContent    = 'Visitor Name / Title';
+    input.placeholder    = 'e.g. John Smith — CEO, Acme Corp';
+  } else {
+    label.textContent    = 'Event Name / Subject';
+    input.placeholder    = 'e.g. Annual General Meeting 2025';
+  }
+  detail.classList.add('visible');
+  updatePreview();
+}
+
+// ── DURATION BUTTONS ──────────────────────────────────────────────────────────
+document.getElementById('durationGrid').addEventListener('click', function(e) {
+  const btn = e.target.closest('.duration-btn');
+  if (!btn) return;
+  document.querySelectorAll('.duration-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const val  = btn.dataset.value;
+  const wrap = document.getElementById('customDurationWrap');
+  if (val === 'Custom') {
+    wrap.classList.add('visible');
+    selectedDuration = document.getElementById('customDurationInput').value.trim() || '';
+  } else {
+    wrap.classList.remove('visible');
+    selectedDuration = val;
+  }
+  updatePreview();
+});
+
+function onCustomDurationInput() {
+  selectedDuration = document.getElementById('customDurationInput').value.trim();
+  updatePreview();
+}
+
+// ── QUANTITY ──────────────────────────────────────────────────────────────────
+function onQtyChange() {
+  const sel = document.getElementById('quantity').value;
+  document.getElementById('customQtyWrap').classList.toggle('visible', sel === 'custom');
+  updatePreview();
+}
+
+function getQuantity() {
+  const sel = document.getElementById('quantity').value;
+  return sel === 'custom'
+    ? (parseInt(document.getElementById('customQtyInput').value) || 0)
+    : parseInt(sel);
+}
+
+// ── LIVE PREVIEW ──────────────────────────────────────────────────────────────
+function updatePreview() {
+  const fn  = document.getElementById('firstName').value;
+  const ln  = document.getElementById('lastName').value;
+  const em  = document.getElementById('email').value;
+  const qty = getQuantity();
+  const name = (fn || ln) ? `${fn} ${ln}`.trim() : 'Your Name';
+  document.getElementById('previewEmail').textContent   = em || 'your-email@example.com';
+  document.getElementById('previewSubject').textContent =
+    `Voucher Request — ${name} [${selectedDuration || 'Custom'} × ${qty || 1}]`;
+}
+['firstName','lastName','email'].forEach(id =>
+  document.getElementById(id).addEventListener('input', updatePreview));
+
+// ── SUBMIT ────────────────────────────────────────────────────────────────────
+async function submitRequest() {
+  const fn           = document.getElementById('firstName').value.trim();
+  const ln           = document.getElementById('lastName').value.trim();
+  const em           = document.getElementById('email').value.trim();
+  const room         = document.getElementById('room').value.trim();
+  const division     = document.getElementById('division').value.trim();
+  const reasonEl     = document.querySelector('input[name="reason"]:checked');
+  // ⬇ This is the CANONICAL field name sent to the server and stored in the DB
+  const reason_subject = document.getElementById('reasonSubject').value.trim();
+  const qty          = getQuantity();
+  const notes        = document.getElementById('notes').value.trim();
+
+  // Validation
+  if (!fn || !ln || !em || !room || !division) {
+    showToast('⚠️ Please fill in all required fields.', 'error'); return;
+  }
+  if (!em.includes('@')) {
+    showToast('⚠️ Please enter a valid email address.', 'error'); return;
+  }
+  if (!reasonEl) {
+    showToast('⚠️ Please select a reason — Visitor or Event.', 'error'); return;
+  }
+  if (!reason_subject) {
+    const lbl = reasonEl.value === 'Visitor' ? 'Visitor Name / Title' : 'Event Name / Subject';
+    showToast(`⚠️ Please enter the ${lbl}.`, 'error'); return;
+  }
+  if (!selectedDuration) {
+    showToast('⚠️ Please enter a custom duration.', 'error'); return;
+  }
+  if (!qty || qty < 1) {
+    showToast('⚠️ Please enter a valid number of vouchers.', 'error'); return;
+  }
+
+  const submitBtn = document.getElementById('submitBtn');
+  submitBtn.disabled = true;
+  submitBtn.textContent = '⏳  Submitting...';
+
+  try {
+    const payload = {
+      first_name:     fn,
+      last_name:      ln,
+      email:          em,
+      division,
+      room,
+      reason:         reasonEl.value,
+      reason_subject,          // ← single canonical field name
+      duration:       selectedDuration,
+      quantity:       qty,
+      notes
+    };
+
+    console.log('[Client] Sending payload:', payload); // debug
+
+    const res  = await fetch(`${_base}/request`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload)
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      requests.unshift({
+        req_id:         data.req_id,
+        name:           `${fn} ${ln}`,
+        email:          em,
+        room, division,
+        reason:         reasonEl.value,
+        reason_subject,
+        duration:       selectedDuration,
+        qty,
+        status: 'pending',
+        date:   new Date().toISOString().split('T')[0]
+      });
+      renderHistory();
+      showToast(`✅ Request ${data.req_id} submitted! Check your email.`, 'success');
+      resetForm();
+    } else {
+      showToast(`❌ Error: ${data.error || 'Submission failed'}`, 'error');
+    }
+  } catch (err) {
+    showToast('❌ Cannot reach server. Make sure server7.py is running.', 'error');
+    console.error(err);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '📤 &nbsp; Send Voucher Request';
+  }
+}
+
+function resetForm() {
+  ['firstName','lastName','email','room','division','notes','reasonSubject','customDurationInput','customQtyInput']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.querySelectorAll('input[name="reason"]').forEach(r => r.checked = false);
+  document.getElementById('reasonDetail').classList.remove('visible');
+  document.getElementById('customDurationWrap').classList.remove('visible');
+  document.getElementById('customQtyWrap').classList.remove('visible');
+  document.getElementById('quantity').value = '1';
+  document.querySelectorAll('.duration-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('[data-value="1 Day"]').classList.add('active');
+  selectedDuration = '1 Day';
+  updatePreview();
+}
+
+// ── HISTORY ───────────────────────────────────────────────────────────────────
+function renderHistory() {
+  const container = document.getElementById('requestHistory');
+  document.getElementById('historyCount').textContent = requests.length + ' TOTAL';
+  if (!requests.length) {
+    container.innerHTML = `<div style="text-align:center;padding:30px;color:var(--muted);font-family:'Space Mono',monospace;font-size:13px;">No requests yet</div>`;
+    return;
+  }
+  const icons  = { pending:'⏳', approved:'✅' };
+  const rIcons = { Visitor:'👤', Event:'🎉' };
+  container.innerHTML = requests.map(r => `
+    <div class="request-item">
+      <div class="req-left">
+        <div class="req-icon ${r.status}">${icons[r.status] || '⏳'}</div>
+        <div class="req-info">
+          <h4>${r.req_id} — ${r.duration} × ${r.qty}</h4>
+          <div class="req-meta">${r.name} · ${r.division} · ${rIcons[r.reason]||''} ${r.reason||''}</div>
+          ${r.reason_subject ? `<div class="req-subject">📌 ${r.reason_subject}</div>` : ''}
+        </div>
+      </div>
+      <div class="req-right">
+        <div class="status-tag ${r.status}">${r.status.toUpperCase()}</div>
+        <div class="req-date">${r.date}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className   = `toast ${type}`;
+  t.style.display = 'flex';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.display = 'none'; }, 5000);
+}
+
+// Init
+renderHistory();
+</script>
+</body>
+</html>
